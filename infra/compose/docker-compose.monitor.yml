@@ -1,0 +1,106 @@
+name: automation-monitoring
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: automation-loki
+    command: -config.file=/etc/loki/loki.yml
+    restart: unless-stopped
+    init: true
+    networks:
+      - monitoring
+    ports:
+      - "${LOKI_HOST_BIND:-127.0.0.1}:${LOKI_HOST_PORT:-3100}:3100"
+    volumes:
+      - ../monitoring/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  promtail:
+    image: grafana/promtail:3.3.2
+    container_name: automation-promtail
+    command: -config.file=/etc/promtail/promtail.yml
+    restart: unless-stopped
+    init: true
+    networks:
+      - monitoring
+    volumes:
+      - ../monitoring/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail-positions:/tmp
+    depends_on:
+      - loki
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: automation-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
+      - --web.enable-lifecycle
+    restart: unless-stopped
+    init: true
+    networks:
+      - monitoring
+      - backend
+    ports:
+      - "${PROMETHEUS_HOST_BIND:-127.0.0.1}:${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: automation-grafana
+    restart: unless-stopped
+    init: true
+    networks:
+      - monitoring
+    ports:
+      - "${GRAFANA_HOST_BIND:-127.0.0.1}:${GRAFANA_HOST_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-change-me-before-production}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "${GRAFANA_ROOT_URL:-http://localhost:3001}"
+      GF_LOG_MODE: console
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - loki
+      - prometheus
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  monitoring:
+    name: "${MONITORING_NETWORK_NAME:-automation_monitoring}"
+    driver: bridge
+  backend:
+    name: "${APP_NETWORK_NAME:-automation_backend}"
+    external: true
+
+volumes:
+  loki-data:
+  promtail-positions:
+  prometheus-data:
+  grafana-data:

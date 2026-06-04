@@ -1,0 +1,115 @@
+/// Notification enum-এর main source Prisma schema.
+///
+///! এই enum value গুলো change করলে নিচের TypeScript mirror enum file-টাও update করতে হবে:
+/// src/modules/notification-log/constants/notification-log.enum.ts
+///
+///! @see src/modules/notification-log/constants/notification-log.enum.ts
+enum NotificationChannel {
+  APP
+  PUSH
+  EMAIL
+  SMS
+  PUSHER
+
+  @@schema("logs")
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+  SYSTEM
+  SECURITY
+  PAYMENT
+  ORDER
+  ACCOUNT
+  PROMOTION
+  REMINDER
+
+  @@schema("logs")
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@schema("logs")
+}
+
+enum NotificationAudienceType {
+  USER
+  ROLE
+  GLOBAL
+  SEGMENT
+
+  @@schema("logs")
+}
+
+/**
+ * Notification persistence model.
+ *
+ * Flow:
+ * NotificationActionService.send()
+ * -> notification_logs create
+ * -> optional Pusher user/channel delivery
+ * -> NotificationLogService read/mark-as-read APIs.
+ *
+ * Update checklist:
+ * - Keep notification-log enum mirrors in TypeScript synchronized.
+ * - Regenerate Prisma after changing nullable fields or enum values.
+ * - Keep NotificationActionConfig and mapper output aligned with this model.
+ *
+ * Warning:
+ * pushChannel is nullable because logs can be created for non-channel
+ * notifications and legacy migrations added this column without a backfill.
+ * Do not assume eventName implies pushChannel exists.
+ *
+ * @see src/modules/automation/types/automation-event.type.ts
+ * NotificationActionConfig
+ * @see src/modules/rule/mappers/automation-rule.mapper.ts
+ * mapNotificationActionToCreateRow() --in add notificationConfig field
+ * @see src/modules/automation/services/notification-action.service.ts
+ */
+
+model NotificationLog {
+  id     String  @default(uuid())
+  userId String? @map("user_id")
+
+  serviceName ServiceName @map("service_name")
+
+  channel      NotificationChannel      @default(PUSHER)
+  pushChannel  String?                  @map("push_channel")
+  type         NotificationType         @default(INFO)
+  priority     NotificationPriority     @default(NORMAL)
+  eventName    String?
+  audienceType NotificationAudienceType @default(USER) @map("audience_type")
+  audienceKey  String?                  @map("audience_key")
+  // example:
+  // audienceType = ROLE, audienceKey = "ADMIN"
+  // audienceType = SEGMENT, audienceKey = "PREMIUM_USERS"
+
+  title   String
+  message String
+  payload Json?
+
+  entityType String? @map("entity_type")
+  entityId   String? @map("entity_id")
+  actionUrl  String? @map("action_url")
+
+  isRead Boolean   @default(false) @map("is_read")
+  readAt DateTime? @map("read_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@id([id, serviceName])
+  @@index([serviceName, userId, isRead])
+  @@index([serviceName, type])
+  @@index([serviceName, audienceType, audienceKey])
+  @@index([createdAt])
+  @@map("notification_logs")
+  @@schema("logs")
+}

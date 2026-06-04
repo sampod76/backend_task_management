@@ -1,0 +1,19 @@
+model Admin {
+  id        String       @id @default(uuid())
+  userId    String       @unique @map("user_id")
+  user      User         @relation(fields: [userId], references: [id])
+  firstName String       @map("first_name")
+  lastName  String       @map("last_name")
+  phone     String?      @db.VarChar(255)
+  address   String?      @db.VarChar(255)
+  imageId   String?      @unique @map("image_id")
+  image     File?        @relation("admin_profile_image", fields: [imageId], references: [id])
+  //
+  status    RecordStatus @default(active)
+  deletedAt DateTime?    @map("deleted_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@map("admins")
+  @@schema("auth")
+}

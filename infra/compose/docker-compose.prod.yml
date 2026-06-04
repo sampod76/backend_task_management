@@ -1,0 +1,78 @@
+name: automation-service
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-app-env: &app-env
+  NODE_ENV: production
+  PORT: "${APP_PORT:-5000}"
+  WAIT_FOR_SERVICES: "${WAIT_FOR_SERVICES:-true}"
+  WAIT_RETRIES: "${WAIT_RETRIES:-30}"
+  WAIT_SLEEP_SECONDS: "${WAIT_SLEEP_SECONDS:-2}"
+  HEALTHCHECK_MODE: auto
+  RUN_MIGRATIONS: "false"
+
+x-app-service: &app-service
+  image: "${IMAGE_REF:-ghcr.io/example/automation-service:latest}"
+  restart: unless-stopped
+  init: true
+  env_file:
+    - ../../.env
+  networks:
+    - backend
+  logging: *default-logging
+  stop_grace_period: 45s
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+  healthcheck:
+    test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 45s
+
+services:
+  api:
+    <<: *app-service
+    container_name: automation-api
+    command: node dist/src/main.js
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "true"
+      ENABLE_WORKERS: "${API_ENABLE_WORKERS:-false}"
+    ports:
+      - "${API_HOST_BIND:-127.0.0.1}:${API_HOST_PORT:-5000}:5000"
+
+  worker:
+    <<: *app-service
+    command: node dist/src/worker.js
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "false"
+      ENABLE_WORKERS: "true"
+      HEALTHCHECK_MODE: process
+    deploy:
+      replicas: 1
+
+  maintenance:
+    <<: *app-service
+    container_name: automation-maintenance
+    command: node dist/src/maintenance.js
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "false"
+      ENABLE_WORKERS: "false"
+      HEALTHCHECK_MODE: process
+
+networks:
+  backend:
+    name: "${APP_NETWORK_NAME:-automation_backend}"
+    driver: bridge

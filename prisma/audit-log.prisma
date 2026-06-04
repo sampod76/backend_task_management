@@ -1,0 +1,113 @@
+model AuditLog {
+  id            String      @default(uuid())
+  eventId       String?     @map("event_id")
+  eventType     String      @map("event_type") // AutomationEventType -> USER_CREATED,BOOKING_CREATED
+  serviceName   ServiceName @map("service_name") // কোন service trigger করেছে, account/flyghor_auth/flyghor_b2b
+  entity        String? //কোন object (user, booking)
+  entityId      String?     @map("entity_id") // সেই object id
+  action        String? //কি করা হয়েছে : CREATE, UPDATE, DELETE
+  //
+  // SUCCESS | FAILED
+  result        String      @default("SUCCESS")
+  /// Error message if failed
+  errorMessage  String?     @map("error_message")
+  //
+  actorId       String?     @map("actor_id")
+  actorType     String?     @map("actor_type") // admin / use
+  actorEmail    String?     @map("actor_email")
+  //! Only important if there is a possibility of such a restore in the future. ! other wise skip 
+  oldData       Json?       @map("old_data") // 
+  newData       Json?       @map("new_data")
+  /**
+   * "changedFields": {
+   * "name": {
+   * "from": "Rahim",
+   * "to": "Rahim Hasan"
+   * }
+   * }
+   */
+  changedFields Json?       @map("changed_fields") //
+  metadata      Json? // must be add user info userid / email
+
+  requestId String? @map("request_id")
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@id([id, serviceName])
+  @@index([serviceName, eventType, createdAt])
+  @@map("audit_logs")
+  @@schema("logs")
+}
+
+/// Represents the source service that generated the audit log.
+/// ⚠️ Keep this enum synced with domain ServiceName enum.
+/// @see src\common\constants\automation.ts
+/// @see Prisma ServiceName enum (audit-log.prisma)
+
+enum ServiceName {
+  HOLIDAY
+  HOLIDAY_ACCOUNT
+  NIROPEKKHO_NEWS
+  NIROPEKKHO_NEWS_ACCOUNT
+  FLYGHOR_AUTH
+  FLYGHOR_B2B
+  FLYGHOR_B2C
+  FLYGHOR_ADMIN
+  NARIA_TRAVEL_AND_TOUR
+  NARIA_TRAVEL_AND_TOUR_ACCOUNT
+  HASAN_OVERSEAS
+  HASAN_OVERSEAS_ACCOUNT
+  NARIA_IT_SOLUTIONS
+  NARIA_IT_SOLUTIONS_ACCOUNT
+  RAYHAN_ENTERPRISE
+  RAYHAN_ENTERPRISE_ACCOUNT
+  AUTOMATION
+
+  @@schema("logs")
+}
+
+/**
+ * {
+ * "eventType": "USER_UPDATED",
+ * "serviceName": "account_service",
+ * "entity": "user",
+ * "entityId": "u123",
+ * "action": "UPDATE",
+ * "actorId": "u123",
+ * "actorType": "user",
+ * // "oldData": {
+ * //   "name": "Rahim"
+ * // },
+ * // "newData": {
+ * //   "name": "Rahim Hasan"
+ * // },
+ * "changedFields": {
+ * "name": {
+ * "from": "Rahim",
+ * "to": "Rahim Hasan"
+ * }
+ * }
+ * }
+ */
+
+/**
+ * type 1:
+ * metadata :{
+ * "user": {
+ * "userId": "u123",
+ * "email": "4OcDl@example.com",
+ * "role": "admin"
+ * }
+ * }
+ * type 2:
+ * metadata :{
+ * "user": {
+ * "userId": "u123",
+ * "email": "4OcDl@example.com",
+ * "role": "admin"
+ * }
+ * }
+ */

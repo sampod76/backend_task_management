@@ -1,0 +1,206 @@
+/// Relational automation rule model.
+///
+/// Flow:
+/// rule API request -> Zod schema -> automation-rule.mapper.ts -> these tables
+/// -> RuleRepository.findActiveRulesByEventType() -> RuleEngineService.
+///
+/// Update checklist:
+/// - Update src/modules/rule/schemas/create-rule.schema.ts for API validation.
+/// - Update src/modules/rule/mappers/automation-rule.mapper.ts for row mapping.
+/// - Update src/modules/automation/types/automation-event.type.ts for runtime types.
+/// - Run prisma generate after changing fields or enum references.
+///
+/// Warning:
+/// Rule uniqueness is enforced in RuleService, not by a database constraint.
+/// Concurrent equivalent creates can race until a DB constraint/advisory lock is added.
+model AutomationRule {
+  id          String  @id @default(uuid())
+  name        String
+  serviceName String? @map("service_name")
+  eventType   String  @map("event_type")
+  isActive    Boolean @default(true) @map("is_active")
+  priority    Int     @default(100)
+  description String?
+
+  conditions AutomationRuleCondition[]
+  actions    AutomationRuleAction[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([eventType, isActive, priority])
+  @@index([deletedAt])
+  @@map("automation_rules")
+  @@schema("automation")
+}
+
+model AutomationRuleCondition {
+  id String @id @default(uuid())
+
+  ruleId String         @map("rule_id")
+  rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  fieldPath String @map("field_path")
+
+  conditionType AutomationConditionType      @map("condition_type")
+  operator      AutomationConditionOperator?
+
+  valueType AutomationConditionValueType? @map("value_type")
+
+  stringValue  String?  @map("string_value")
+  numberValue  Decimal? @map("number_value")
+  booleanValue Boolean? @map("boolean_value")
+  jsonValue    Json?    @map("json_value")
+
+  sortOrder Int       @default(0) @map("sort_order")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([ruleId])
+  @@index([fieldPath])
+  @@index([conditionType])
+  @@index([deletedAt])
+  @@map("automation_rule_conditions")
+  @@schema("automation")
+}
+
+model AutomationRuleAction {
+  id String @id @default(uuid())
+
+  ruleId String         @map("rule_id")
+  rule   AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  type AutomationActionType
+
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  emailConfig        AutomationRuleEmailAction?
+  notificationConfig AutomationRuleNotificationAction?
+  webhookConfig      AutomationRuleWebhookAction?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([ruleId])
+  @@index([type])
+  @@index([ruleId, type, sortOrder])
+  @@index([isActive, deletedAt])
+  @@map("automation_rule_actions")
+  @@schema("automation")
+}
+
+/**
+ * Email action config table.
+ *
+ * @see src/modules/rule/mappers/automation-rule.mapper.ts
+ * mapEmailActionToCreateRow()
+ *
+ * @see src/modules/automation/types/automation-event.type.ts
+ * EmailActionConfig
+ */
+model AutomationRuleEmailAction {
+  id String @id @default(uuid())
+
+  actionId String               @unique @map("action_id")
+  action   AutomationRuleAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  to        String
+  from      String?
+  cc        String?
+  bcc       String?
+  subject   String
+  body      String
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([deletedAt])
+  @@map("automation_rule_email_actions")
+  @@schema("automation")
+}
+/**
+ * Notification action config table.
+ *
+ * pushChannel/eventName feed websocket delivery through NotificationActionService.
+ * Both fields are nullable for migration compatibility, so runtime code must
+ * validate eventName + pushChannel before Pusher delivery.
+ *
+ * @see src/modules/rule/mappers/automation-rule.mapper.ts
+ * mapNotificationActionToCreateRow()
+ * @see src/modules/automation/types/automation-event.type.ts
+ * NotificationActionConfig
+ * @see src/modules/rule/schemas/create-rule.schema.ts
+ * SendNotificationActionCreateSchema
+ */
+model AutomationRuleNotificationAction {
+  id String @id @default(uuid())
+
+  actionId String               @unique @map("action_id")
+  action   AutomationRuleAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  channel     NotificationChannel @default(APP)
+  pushChannel String?             @map("push_channel") // PushChannel -> prisma\automation-rule.prisma
+  eventName   String?             @map("event_name") // PushEvent -> prisma\automation-rule.prisma
+
+  title   String
+  message String
+  payload Json?
+
+  priority     NotificationPriority?     @default(NORMAL)
+  audienceType NotificationAudienceType? @default(USER) @map("audience_type")
+  audienceKey  String?                   @map("audience_key")
+
+  entityType String?   @map("entity_type")
+  entityId   String?   @map("entity_id")
+  actionUrl  String?   @map("action_url")
+  isActive   Boolean   @default(true) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  @@index([channel])
+  @@index([audienceType, audienceKey])
+  @@index([deletedAt])
+  @@map("automation_rule_notification_actions")
+  @@schema("automation")
+}
+/**
+ * Webhook action config table.
+ *
+ * TODO:
+ * Add a delivery/attempt log table if webhook response auditing is required.
+ *
+ * @see src/modules/rule/mappers/automation-rule.mapper.ts
+ * mapWebhookActionToCreateRow()
+ *
+ * @see src/modules/automation/types/automation-event.type.ts
+ * WebhookActionConfig
+ */
+model AutomationRuleWebhookAction {
+  id String @id @default(uuid())
+
+  actionId String               @unique @map("action_id")
+  action   AutomationRuleAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  url     String
+  method  AutomationWebhookMethod @default(POST)
+  headers Json?
+  payload Json?
+
+  timeoutMs Int?      @map("timeout_ms")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([method])
+  @@index([deletedAt])
+  @@map("automation_rule_webhook_actions")
+  @@schema("automation")
+}

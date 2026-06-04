@@ -1,0 +1,36 @@
+enum UserRole {
+  user
+  admin
+  super_admin
+
+  @@schema("auth")
+}
+
+enum AccountType {
+  custom
+  google
+
+  @@schema("auth")
+}
+
+model User {
+  id              String       @id @default(uuid())
+  email           String       @unique @db.VarChar(255)
+  username        String       @unique @db.VarChar(255)
+  password        String
+  role            UserRole     @default(user)
+  accountType     AccountType  @default(custom) @map("account_type")
+  isEmailVerified Boolean      @default(false) @map("is_email_verified")
+  status          RecordStatus @default(active)
+  deletedAt       DateTime?    @map("deleted_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  admin       Admin?
+  fileCreator File[] @relation("file_created_by")
+
+  @@index([deletedAt, createdAt])
+  @@index([status, role])
+  @@map("users")
+  @@schema("auth")
+}

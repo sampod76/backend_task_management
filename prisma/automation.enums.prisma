@@ -1,0 +1,79 @@
+//! zod label to control
+// enum AutomationEventType {
+//   USER_CREATED
+//   USER_UPDATED
+//   USER_DELETED
+//   BOOKING_CREATED
+//   BOOKING_CONFIRMED
+//   PAYMENT_SUCCESS
+//   PAYMENT_FAILED
+//   PAYMENT_CANCELLED
+
+//   @@schema("automation")
+// }
+
+enum AutomationActionType {
+  AUDIT_LOG
+  SEND_EMAIL
+  SEND_NOTIFICATION
+  SEND_WEBHOOK
+
+  @@schema("automation")
+}
+
+enum AutomationConditionType {
+  DIRECT
+  EXISTS
+  OPERATOR
+
+  @@schema("automation")
+}
+
+enum AutomationConditionOperator {
+  GT
+  GTE
+  LT
+  LTE
+  EQ
+  NEQ
+  IN
+
+  @@schema("automation")
+}
+
+enum AutomationConditionValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+
+  @@schema("automation")
+}
+
+enum AutomationWebhookMethod {
+  GET
+  POST
+  PUT
+  PATCH
+  DELETE
+
+  @@schema("automation")
+}
+
+enum AutomationJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRYING
+
+  @@schema("automation")
+}
+
+enum AutomationIdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@schema("automation")
+}

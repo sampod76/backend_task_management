@@ -1,0 +1,68 @@
+model File {
+  id String @id @default(cuid())
+
+  filename String
+  mimetype String
+  size     Int    @default(0)
+
+  storage StorageProvider @default(aws)
+  path    String
+  url     String?
+
+  fileKey String @unique @map("file_key")
+
+  category FileCategory @default(image)
+
+  entityId   String? @map("entity_id")
+  entityType String? @map("entity_type") // 
+
+  createdById String? @map("created_by_id")
+  createdBy   User?   @relation("file_created_by", fields: [createdById], references: [id])
+
+  isPrimary Boolean @default(false) @map("is_primary")
+  isPublic  Boolean @default(true) @map("is_public")
+
+  title    String?
+  caption  String?
+  metadata Json?
+
+  deletedAt DateTime? @map("deleted_at")
+
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  adminProfileImage Admin?   @relation("admin_profile_image")
+
+  @@index([entityType, entityId, isPrimary])
+  // @@index([createdById, category])
+  @@index([deletedAt, createdAt])
+  @@map("files")
+  @@schema("media")
+}
+
+// enum EntityType {
+//   USER
+//   POST
+//   PRODUCT
+//   CERTIFICATE
+
+//   @@schema("common")
+// }
+
+enum FileCategory {
+  image
+  video
+  audio
+  document
+  pdf
+  other
+
+  @@schema("common")
+}
+
+enum StorageProvider {
+  aws
+  cloudinary
+  server
+
+  @@schema("common")
+}

@@ -1,0 +1,34 @@
+name: Cleanup GHCR
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+concurrency:
+  group: ghcr-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup-untagged-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Prepare package metadata
+        id: package
+        shell: bash
+        run: |
+          package_name="${GITHUB_REPOSITORY#*/}"
+          package_name="${package_name,,}"
+          echo "name=${package_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Delete old untagged package versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ steps.package.outputs.name }}
+          package-type: container
+          min-versions-to-keep: 20
+          delete-only-untagged-versions: true

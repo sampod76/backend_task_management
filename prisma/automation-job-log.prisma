@@ -1,0 +1,24 @@
+model AutomationJobLog {
+  id          String               @default(uuid())
+  eventId     String               @map("event_id") // কোন event থেকে এসেছে UUID
+  eventType   String               @map("event_type") // AutomationEventType -> USER_CREATED,BOOKING_CREATED
+  actionType  AutomationActionType @map("action_type") // কি কাজ হচ্ছে
+  status      AutomationJobStatus  @default(PENDING) // PENDING → PROCESSING → COMPLETED / FAILED
+  serviceName ServiceName          @map("service_name")
+  payload     Json
+  error       String?
+  attempts    Int                  @default(0)
+
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  failedAt    DateTime? @map("failed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  @@id([id, serviceName])
+  @@index([serviceName, eventType, createdAt])
+  @@index([serviceName, status, createdAt])
+  @@index([serviceName, eventId])
+  @@map("automation_job_logs")
+  @@schema("automation")
+}

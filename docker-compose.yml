@@ -1,0 +1,54 @@
+services:
+  api:
+    container_name: automation-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    command: node dist/src/main.js
+
+    restart: always
+
+    ports:
+      - "5000:5000"
+
+    env_file:
+      - .env
+
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    container_name: automation-worker
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    command: node dist/src/worker.js
+
+    restart: always
+
+    env_file:
+      - .env
+
+    depends_on:
+      - postgres
+      - redis
+
+  maintenance:
+    container_name: automation-maintenance
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    command: node dist/src/maintenance.js
+
+    restart: always
+
+    env_file:
+      - .env
+
+    depends_on:
+      - postgres
+      - redis

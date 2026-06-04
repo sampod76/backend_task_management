@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    /* ===============================
+       Module System (IMPORTANT)
+    =============================== */
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    /* ===============================
+       Target & Output
+    =============================== */
+    "target": "ES2021",
+    "rootDir": "./",
+    "outDir": "./dist",
+    "sourceMap": true,
+    "removeComments": true,
+    "declaration": false,
+
+    /* ===============================
+       Decorators (NestJS Core)
+    =============================== */
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+
+    /* ===============================
+       Interop & Imports
+    =============================== */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* ===============================
+       Project Structure
+    =============================== */
+    "baseUrl": "./",
+    "paths": {
+      "src/*": ["src/*"]
+    },
+    "incremental": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+
+    /* ===============================
+       Type Safety (Balanced)
+    =============================== */
+    "strict": false,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false,
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "prisma.config.ts"],
+  "exclude": ["node_modules", "dist", "coverage", "src/generated/**"]
+}

@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "automation"."automation_rule_notification_actions_audience_type_audience_key" RENAME TO "automation_rule_notification_actions_audience_type_audience_idx";

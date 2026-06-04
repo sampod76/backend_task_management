@@ -1,0 +1,18 @@
+model EmailLog {
+  id          String      @default(uuid())
+  serviceName ServiceName @map("service_name")
+  to          String
+  subject     String
+  body        String
+  provider    String?
+  status      String      @default("PENDING")
+  error       String?
+  sentAt      DateTime?   @map("sent_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  deletedAt   DateTime?   @map("deleted_at")
+
+  @@id([id, serviceName])
+  @@index([serviceName, status, createdAt])
+  @@map("email_logs")
+  @@schema("logs")
+}
